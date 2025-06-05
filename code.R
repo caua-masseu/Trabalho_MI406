@@ -23,6 +23,10 @@ plot(y ~x1)
 hist(y)
 
 lm(y ~ 1 + x1 + x2)
-coef(lmrob.lar(y = y, x = X))
+lmrob.lar(y = y, x = X)
 MASS::rlm(y = y, x = X)
 lmrob.S(x = X, y = y, control = lmrob.control("KS2011", max.it = 1000))[1]
+lmrob(y ~ X - 1)
+
+
+

@@ -19,25 +19,27 @@ ponto_influente <- function(fit){
   return(list('i_dffits' = i_dffits, 'i_dfbetas' = i_dfbetas, 'i_dist_cook' = i_dist_cook))
 }
 
+'%!in%' <- function(x,y)!('%in%'(x,y))
+
 #Simulacao
 n_outliers_y <- 3; n_outliers_x <- 1; n_outliers <- n_outliers_x + n_outliers_y
-size = 10 
-size_x = 5
+size =  5
+size_x = 10
 n <- 100 
 obs_out_y <- 1:n_outliers_y
 obs_out_x <- n - 1:n_outliers_x
 obs_out <- c(obs_out_y, obs_out_x)
 
-'%!in%' <- function(x,y)!('%in%'(x,y))
-
 n_rep <- 1000
 bhatmqo <- bhatl1 <- bhatm <- bhats <- data.frame()
 per_res_std_y <- per_res_std_d_y <- per_res_std_x <- per_res_std_d_x <- per_h_ii <- per_res_std_false <- per_res_std_d_false <- per_h_ii_false <- c() 
 per_i_dffits <- per_i_dfbeta_1 <- per_i_dfbeta_2 <- per_i_dfbeta_3 <- per_i_cook <- c()
+per_i_dffits_false <- per_i_dfbeta_1_false <- per_i_dfbeta_2_false <- per_i_dfbeta_3_false <- per_i_cook_false <- c()
 for(i in 1:n_rep){
   set.seed(i)
   # parâmetros
   beta <- c(1, 2.5, -1.5)
+  
   # Simulando Modelo
   x1 <- rnorm(n = n, sd = 1, mean = 3)
   x2 <- rnorm(n = n, sd = 1, mean = 4)
@@ -45,12 +47,12 @@ for(i in 1:n_rep){
   y <- X %*% beta + rnorm(n, sd = 1)
   
   # outliers em Y
-  y[obs_out] <- size + y[obs_out]
+  y[obs_out_y] <- size + y[obs_out_y]
   
   #outlier em X
   x1[obs_out_x] <- x1[obs_out_x] + size_x
   
-  # estimadores
+  #estimadores
   MQO <- lm(y ~ 1 + x1 + x2)
   
   #Detecao de outliers
@@ -65,14 +67,20 @@ for(i in 1:n_rep){
   per_h_ii <- c(per_h_ii, sum(det_obs_out$out_h %in% obs_out_x)/n_outliers_x * 100)
   per_h_ii_false <- c(per_h_ii_false, sum(det_obs_out$out_h %!in% obs_out_x)/(n- n_outliers_x) * 100)
   
-  
   #Ponto Influente
   det_point_inf <- ponto_influente(MQO)
+  
   per_i_dffits <- c(per_i_dffits, sum(det_point_inf$i_dffits %in% obs_out) / n_outliers * 100)
   per_i_dfbeta_1 <- c(per_i_dfbeta_1, sum(det_point_inf$i_dfbetas[[1]] %in% obs_out) / n_outliers * 100)
   per_i_dfbeta_2 <- c(per_i_dfbeta_2, sum(det_point_inf$i_dfbetas[[2]] %in% obs_out) / n_outliers * 100)
   per_i_dfbeta_3 <- c(per_i_dfbeta_3, sum(det_point_inf$i_dfbetas[[3]] %in% obs_out) / n_outliers * 100)
   per_i_cook <- c(per_i_cook, sum(det_point_inf$i_dist_cook %in% obs_out) / n_outliers * 100)
+  
+  per_i_dffits_false <- c(per_i_dffits_false, sum(det_point_inf$i_dffits %!in% obs_out) / n_outliers * 100)
+  per_i_dfbeta_1_false <- c(per_i_dfbeta_1_false, sum(det_point_inf$i_dfbetas[[1]] %!in% obs_out) / n_outliers * 100)
+  per_i_dfbeta_2_false <- c(per_i_dfbeta_2_false, sum(det_point_inf$i_dfbetas[[2]] %!in% obs_out) / n_outliers * 100)
+  per_i_dfbeta_3_false <- c(per_i_dfbeta_3_false, sum(det_point_inf$i_dfbetas[[3]] %!in% obs_out) / n_outliers * 100)
+  per_i_cook_false <- c(per_i_cook_false, sum(det_point_inf$i_dist_cook %!in% obs_out) / n_outliers * 100)
   
   L1 <-lmrob.lar(y = y, x = X)
   M <- rlm(y = y, x = X, psi = psi.huber)
@@ -82,35 +90,24 @@ for(i in 1:n_rep){
   bhatm <- rbind(bhatm, c(coef(M)[1:3]))
   bhats <- rbind(bhats, c(coef(S)[1:3]))
 }
-#colnames(bhatmqo) <- colnames(bhatl1) <- colnames(bhatm) <- colnames(bhats) <- c('beta_0$', '$\beta_0$', '$\beta_0$')
+
 vies <- data.frame()
-vies <- rbind(vies, apply(bhatmqo, MARGIN = 2, mean) - beta, 
+vies <- rbind(apply(bhatmqo, MARGIN = 2, mean) - beta, 
               apply(bhatl1, MARGIN = 2, mean) - beta, 
               apply(bhatm, MARGIN = 2, mean) - beta, 
               apply(bhats, MARGIN = 2, mean) - beta)
-colnames(vies) <- c('$beta_0$', '$beta_0$', '$beta_0$')
+colnames(vies) <- c('$beta_0$', '$beta_1$', '$beta_2$')
 rownames(vies) <- c('MQO', 'L1', 'M', 'S')
 
-data_out <- data.frame(std = c(mean(per_res_std_false), mean(per_res_std_y), mean(per_res_std_x)), 
+data_out <- data.frame(std = c(mean(per_res_std_false), mean(per_res_std_y), mean(per_res_std_x)),
            std_d = c(mean(per_res_std_d_false), mean(per_res_std_d_y), mean(per_res_std_d_x)),
-          h_ii = c(mean(per_h_ii_false), mean(per_h_ii), "NA"))
+          h_ii = c(mean(per_h_ii_false), mean(per_h_ii), "NA"), 
+          dffits = c(mean(per_i_dffits_false), mean(per_i_dffits), "NA") , 
+          dfbeta_1 = c(mean(per_i_dfbeta_1_false), mean(per_i_dfbeta_1), "NA"), 
+          dfbeta_2 = c(mean(per_i_dfbeta_2_false), mean(per_i_dfbeta_2), "NA"),
+          dfbeta_3 = c(mean(per_i_dfbeta_3_false), mean(per_i_dfbeta_3), "NA"), 
+          cook = c(mean(per_i_cook_false), mean(per_i_cook), "NA"))
 
-xtable::xtable(data_out)
-
-data_point_influente <- data.frame(dffits = mean(per_i_dffits), dfbeta_1 = mean(per_i_dfbeta_1), dfbeta_2 = mean(per_i_dfbeta_2),
-                                   dfbeta_3 = mean(per_i_dfbeta_3), cook = mean(per_i_cook))
-
-xtable::xtable(data_point_influente)
+xtable::xtable(data_out, digits = 3)
 xtable::xtable(vies)
-
-plot(y ~ x1)
-hist(y)
-
-lm(y ~ 1 + x1 + x2)
-lmrob.lar(y = y, x = X)
-MASS::rlm(y = y, x = X)
-lmrob.S(x = X, y = y, control = lmrob.control("KS2011", max.it = 1000))[1]
-lmrob(y ~ X - 1)
-
-
 

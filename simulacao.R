@@ -20,11 +20,12 @@ ponto_influente <- function(fit){
 }
 
 '%!in%' <- function(x,y)!('%in%'(x,y))
+EQM <- function(res){mean((res)^2)} 
 
 #Simulacao
 n_outliers_y <- 3; n_outliers_x <- 1; n_outliers <- n_outliers_x + n_outliers_y
-size =  5
-size_x = 10
+size =  10
+size_x = 5
 n <- 100 
 obs_out_y <- 1:n_outliers_y
 obs_out_x <- n - 1:n_outliers_x
@@ -35,6 +36,7 @@ bhatmqo <- bhatl1 <- bhatm <- bhats <- data.frame()
 per_res_std_y <- per_res_std_d_y <- per_res_std_x <- per_res_std_d_x <- per_h_ii <- per_res_std_false <- per_res_std_d_false <- per_h_ii_false <- c() 
 per_i_dffits <- per_i_dfbeta_1 <- per_i_dfbeta_2 <- per_i_dfbeta_3 <- per_i_cook <- c()
 per_i_dffits_false <- per_i_dfbeta_1_false <- per_i_dfbeta_2_false <- per_i_dfbeta_3_false <- per_i_cook_false <- c()
+eqms <- data.frame()
 for(i in 1:n_rep){
   set.seed(i)
   # parâmetros
@@ -89,6 +91,9 @@ for(i in 1:n_rep){
   bhatl1 <- rbind(bhatl1, c(coef(L1)[1:3]))
   bhatm <- rbind(bhatm, c(coef(M)[1:3]))
   bhats <- rbind(bhats, c(coef(S)[1:3]))
+  
+  #EQM
+  eqms <- rbind(eqms, c(EQM(residuals(MQO)), EQM(residuals(L1)), EQM(residuals(M)), EQM(residuals(S))))
 }
 
 vies <- data.frame()
@@ -98,6 +103,10 @@ vies <- rbind(apply(bhatmqo, MARGIN = 2, mean) - beta,
               apply(bhats, MARGIN = 2, mean) - beta)
 colnames(vies) <- c('$beta_0$', '$beta_1$', '$beta_2$')
 rownames(vies) <- c('MQO', 'L1', 'M', 'S')
+
+erro_quadratico <- data.frame(apply(eqms, MARGIN = 2, mean))
+rownames(erro_quadratico) <- c('MQO', 'L1', 'M', 'S')
+xtable::xtable(erro_quadratico, digits = 3)
 
 data_out <- data.frame(std = c(mean(per_res_std_false), mean(per_res_std_y), mean(per_res_std_x)),
            std_d = c(mean(per_res_std_d_false), mean(per_res_std_d_y), mean(per_res_std_d_x)),
